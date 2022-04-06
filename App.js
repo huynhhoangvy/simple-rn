@@ -8,7 +8,6 @@
 
 <script src="http://localhost:8097"></script>
 import React from 'react';
-import type {Node} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -36,7 +35,7 @@ import FlashSaleList from './components/FlashSaleList';
 
 const Stack = createNativeStackNavigator();
 
-const App: () => Node = () => {
+const App = () => {
     return (
         <NavigationContainer>
             <Stack.Navigator initialRouteName='Home'>

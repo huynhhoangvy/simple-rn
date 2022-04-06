@@ -1,5 +1,4 @@
-import React, {useRef} from 'react';
-import type {Node} from 'react';
+import React, {useRef, useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -8,12 +7,15 @@ import {
   Image,
   StyleSheet,
   ScrollView,
+  Button,
 } from 'react-native';
+import useInterval from '../hooks/useInterval';
+import union from 'lodash/union';
 
 const styles = StyleSheet.create({
   image: {width: 50, height: 50},
   product: {width: 150, marginRight: 5},
-//   '.product + .product': {}
+  //   '.product + .product': {}
 });
 
 const getTimeDiff = saleDate => {
@@ -33,43 +35,114 @@ const convertSecToTimeDisplayed = ({isOver, delta}) => {
     hour = Math.floor(min / 60);
     day = Math.floor(hour / 24);
     // if (min > 0) {
-    //     console.log('min: ', )
     // } else {
     //     sec = Math.floor(delta / 60);
-    //     console.log('else second: ', sec);
     // }
     if (sec > 0) {
-        displayedStr = sec + '';
-        if (min > 0) {
-            displayedStr = min + ':' + displayedStr;
-            if (hour > 0) {
-                displayedStr = hour + ':' + displayedStr;
-                if (day > 0) {
-                    displayedStr = day + ' days';
-                }
-            }
+      displayedStr = sec + '';
+      if (min > 0) {
+        displayedStr = min + ':' + displayedStr;
+        if (hour > 0) {
+          displayedStr = hour + ':' + displayedStr;
+          if (day > 0) {
+            displayedStr = day + ' days';
+          }
         }
+      }
     }
   } else {
     console.log('sale is over!');
   }
 };
 
-const FlashSaleList: () => Node = ({products, setProducts}) => {
+const FlashSaleList = ({products, setProducts}) => {
+  // const [count, setCount] = useState(0);
+  const [timeoutIds, setTimeoutIds] = useState({});
+  const [intervalId, setIntervalId] = useState(null);
+  const [intervalDelay, setIntervalDelay] = useState(1000);
+  const [viewableItemsState, setViewableItemsState] = useState([]);
+  // let ids = {interval: {}, timeout: {}};
 
-  const onViewRef = React.useRef(({viewableItems, changed}) => {
-    console.log('onViewRef')
+
+  useEffect(() => {}, [])
+
+  useEffect(() => {
+    const intervalCallback = () => {
+      let intervalId;
+      let updatedProducts = [];
+      updatedProducts = products.map(product => {
+        let newItem = null;
+        viewableItemsState.forEach(viewableItem => {
+          if (product.id === viewableItem.item.id) {
+            let delta = Math.abs(product.due_date - Date.now());
+            newItem = Object.assign({}, {...product, due_date: delta});
+            return newItem;
+          }
+        });
+        return newItem ? newItem : product;
+      });
+      setProducts(updatedProducts);
+    };
+
+    if (viewableItemsState.length) {
+      console.log('GET NEW STATE, run effect: ', viewableItemsState.length);
+      let id = setInterval(intervalCallback, intervalDelay);
+      console.log('setinterval: ', id);
+      setTimeout(() => {
+        console.log('clear interval: ', id);
+        clearInterval(id);
+      }, 20000);
+      setIntervalId(id);
+    }
+  }, [viewableItemsState]);
+
+  const viewConfigRef = useRef({viewAreaCoveragePercentThreshold: 0});
+  const onViewRef = useRef(({viewableItems, changed}) => {
+    console.log('onViewRef--------------------------------');
     console.log({viewableItems});
     console.log({changed});
     // Use viewable items in state or as intended
+    // combine viewableItems with changed
+    let items = [];
+    let displayedProducts = [];
+
+    // check condition to decide whether to set interval -- check if changed and viewable are the same
+    let isMatched = viewableItems.every(
+      (item, index) =>
+        changed[index].item.name === viewableItems[index].item.name,
+    );
+    if (viewableItems.length !== changed.length || !isMatched) {
+      console.log('NOT MATCH, HERE');
+      // set interval to handle count & update view for product item
+      items = union(viewableItems, changed).filter(item => {
+        return item.isViewable === true;
+      });
+
+      // set timeout for displayed item from items array
+      let ids = {timeout: []}
+      items.forEach(item => {
+        let delta = Math.floor(item.item.due_date - Date.now());
+        if (delta > 0) {
+          let timeoutId = setTimeout(() => {
+            // timeout callback
+          }, delta);
+          
+          ids.timeout.push(timeoutId);
+        } else {
+          console.log(`item ${item.item.id} sale is expired!`);
+        }
+
+        displayedProducts = [...displayedProducts, item];
+      });
+      console.log('timeoutid: ', ids.timeout)
+      setTimeoutIds(ids.timeout);
+      // console.log({displayedProducts});
+      setViewableItemsState(displayedProducts);
+    }
   });
-  const viewConfigRef = useRef({viewAreaCoveragePercentThreshold: 50});
 
   const renderItem = ({item}) => (
-    <View
-        class='product'
-        style={styles.product}
-    >
+    <View class="product" style={styles.product}>
       <Image style={styles.image} source={{uri: item.image}} />
       <Text>{item.name.substring(0, 10)}</Text>
       <Text>{item.price} VND</Text>
@@ -90,6 +163,7 @@ const FlashSaleList: () => Node = ({products, setProducts}) => {
           viewabilityConfig={viewConfigRef.current}
         />
       )}
+      <Button onPress={() => console.log(products)} title="log" />
     </SafeAreaView>
   );
 };
