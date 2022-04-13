@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import useInterval from '../hooks/useInterval';
 import union from 'lodash/union';
+import omit from 'lodash/omit';
 
 const styles = StyleSheet.create({
   image: {width: 50, height: 50},
@@ -55,27 +56,48 @@ const convertSecToTimeDisplayed = ({isOver, delta}) => {
   }
 };
 
-const FlashSaleList = ({products, setProducts}) => {
+const initialIds = {intervalIds: [], timeoutIds: []};
+
+const FlashSaleList = ({products, setProducts, productState}) => {
   // const [count, setCount] = useState(0);
-  const [timeoutIds, setTimeoutIds] = useState({});
-  const [intervalId, setIntervalId] = useState(null);
+  const [timeoutIds, setTimeoutIds] = useState([]);
+  const [intervalIds, setIntervalIds] = useState([]);
   const [intervalDelay, setIntervalDelay] = useState(1000);
   const [viewableItemsState, setViewableItemsState] = useState([]);
+  const intervalRef = useRef([]);
+  const timeoutRef = useRef([]);
   // let ids = {interval: {}, timeout: {}};
 
-
-  useEffect(() => {}, [])
+  useEffect(() => {
+    console.log('ID LIST: ', timeoutIds);
+  }, [timeoutIds]);
 
   useEffect(() => {
-    const intervalCallback = () => {
+    let newTimeoutIds = [];
+    const intervalCallback = id => {
+      console.log('start interval callback');
       let intervalId;
       let updatedProducts = [];
-      updatedProducts = products.map(product => {
+      console.log('WHICH INTERVAL: ', id);
+      newTimeoutIds = [];
+      updatedProducts = productState.map(product => {
         let newItem = null;
         viewableItemsState.forEach(viewableItem => {
           if (product.id === viewableItem.item.id) {
             let delta = Math.abs(product.due_date - Date.now());
-            newItem = Object.assign({}, {...product, due_date: delta});
+            if (delta > 0) {
+              newItem = Object.assign({}, {...product, due_date: delta});
+              // let timeoutId = setTimeout(() => {
+              //   // timeout callback
+              // }, delta);
+
+              // newTimeoutIds.push(timeoutId);
+            } else {
+              newItem = Object.assign(
+                {},
+                {...product, due_date: 'item expired!'},
+              );
+            }
             return newItem;
           }
         });
@@ -84,60 +106,85 @@ const FlashSaleList = ({products, setProducts}) => {
       setProducts(updatedProducts);
     };
 
+    // NEED TO CLEAR ALL INTERVAL ON
+
     if (viewableItemsState.length) {
-      console.log('GET NEW STATE, run effect: ', viewableItemsState.length);
-      let id = setInterval(intervalCallback, intervalDelay);
-      console.log('setinterval: ', id);
+
+      if (intervalRef.current.length !== 0) {
+        intervalRef.current.forEach(id => {
+          console.log('clear interval id: ', id);
+          clearInterval(id);
+        });
+        console.log('clear all timeout & interval: ', intervalIds);
+        console.log('can i get ref: ', intervalRef);
+      }
+
+      // console.log('GET NEW STATE, run effect: ', viewableItemsState.length);
+      let id = setInterval(() => intervalCallback(id), intervalDelay);
+      console.log('out setinterval: ', id);
+      // let newIntervalIds = []
+      // newIntervalIds = [id];
+      // console.log('future interval ids: ', newIntervalIds)
+      intervalRef.current = [id];
+      setIntervalIds([id]);
+      // console.log('setinterval: ', id);
       setTimeout(() => {
-        console.log('clear interval: ', id);
+        console.log('fake clearinterval: ', id);
         clearInterval(id);
-      }, 20000);
-      setIntervalId(id);
+      }, 5000);
+      // setIntervalId(id);
     }
   }, [viewableItemsState]);
 
   const viewConfigRef = useRef({viewAreaCoveragePercentThreshold: 0});
   const onViewRef = useRef(({viewableItems, changed}) => {
     console.log('onViewRef--------------------------------');
-    console.log({viewableItems});
-    console.log({changed});
+    // console.log({viewableItems});
+    // console.log({changed});
     // Use viewable items in state or as intended
     // combine viewableItems with changed
     let items = [];
-    let displayedProducts = [];
+    // let displayedProducts = [];
+
+    // clear all timeout and interval
+
+    // IDS HERE NEED TO BE EMPTY
 
     // check condition to decide whether to set interval -- check if changed and viewable are the same
-    let isMatched = viewableItems.every(
-      (item, index) =>
-        changed[index].item.name === viewableItems[index].item.name,
-    );
-    if (viewableItems.length !== changed.length || !isMatched) {
-      console.log('NOT MATCH, HERE');
+    let isMatched = changed.every((item, index) => {
+      // console.log('WHY ERROR: ', item)
+      return item.name === viewableItems[index].item.name;
+    });
+    // console.log(isMatched)
+    if (viewableItems.length !== changed.length && !isMatched) {
+      if (timeoutRef.current.length !== 0) {
+        timeoutRef.current.forEach(id => clearTimeout(id));
+      }
+      console.log('cleared timeout: ', timeoutRef.current)
+      // console.log('NOT MATCH, HERE');
       // set interval to handle count & update view for product item
       items = union(viewableItems, changed).filter(item => {
         return item.isViewable === true;
       });
 
-      // set timeout for displayed item from items array
-      let ids = {timeout: []}
+      console.log('WHAT ITEM HERE: ', items)
+      let newTimeoutIds = [];
       items.forEach(item => {
-        let delta = Math.floor(item.item.due_date - Date.now());
+        const delta = Math.abs(Date.now() - item.item.due_date);
         if (delta > 0) {
-          let timeoutId = setTimeout(() => {
-            // timeout callback
+          const id = setTimeout(() => {
+            console.log('countdown done');
           }, delta);
-          
-          ids.timeout.push(timeoutId);
+          newTimeoutIds.push(id);
         } else {
-          console.log(`item ${item.item.id} sale is expired!`);
+          console.log('items loop expired')
         }
+      })
+      console.log('need this: ', newTimeoutIds);
+      timeoutRef.current = newTimeoutIds;
+      setTimeoutIds(newTimeoutIds);
 
-        displayedProducts = [...displayedProducts, item];
-      });
-      console.log('timeoutid: ', ids.timeout)
-      setTimeoutIds(ids.timeout);
-      // console.log({displayedProducts});
-      setViewableItemsState(displayedProducts);
+      setViewableItemsState(items);
     }
   });
 
@@ -163,7 +210,7 @@ const FlashSaleList = ({products, setProducts}) => {
           viewabilityConfig={viewConfigRef.current}
         />
       )}
-      <Button onPress={() => console.log(products)} title="log" />
+      <Button onPress={() => console.log({intervalIds})} title="log" />
     </SafeAreaView>
   );
 };

@@ -6,6 +6,7 @@ import PRODUCTS from '../public/products.json';
 const Home = props => {
   const [isLoading, setIsLoading] = useState(false);
   const [products, setProducts] = useState([]);
+  const [productState, setProductState] = useState([]);
   const getProducts = async () => {
     try {
       // console.log('running in try block');
@@ -15,8 +16,11 @@ const Home = props => {
       if (response.status === 200) {
         const data = await response.json();
         setIsLoading(true);
-        let newData = data.map(item =>Object.assign({}, {...item, due_date: Number(item.due_date)}));
+        let newData = data.map(item =>
+          Object.assign({}, {...item, due_date: Number(item.due_date)}),
+        );
         // console.log('data here: ', newData);
+        setProductState(newData);
         setProducts(newData);
       } else {
         console.error(response.error);
@@ -38,7 +42,11 @@ const Home = props => {
           <Text>Home screen: {props.extraData} IS LOADING</Text>
         </View>
       ) : (
-        <FlashSaleList products={products} setProducts={setProducts} />
+        <FlashSaleList
+          products={products}
+          setProducts={setProducts}
+          productState={productState}
+        />
       )}
     </>
   );
