@@ -16,8 +16,14 @@ const Home = props => {
       if (response.status === 200) {
         const data = await response.json();
         setIsLoading(true);
-        let newData = data.map(item =>
-          Object.assign({}, {...item, due_date: Number(item.due_date)}),
+        let newData = data.map(item => {
+          const dueDate = Number(item.due_date);
+          if (dueDate > Date.now()) {
+            return Object.assign({}, {...item, due_date: dueDate})
+          } else {
+            return Object.assign({}, {...item, due_date: 'sale is over!'})
+          }
+        }
         );
         // console.log('data here: ', newData);
         setProductState(newData);

@@ -9,9 +9,8 @@ import {
   ScrollView,
   Button,
 } from 'react-native';
-import useInterval from '../hooks/useInterval';
 import union from 'lodash/union';
-import omit from 'lodash/omit';
+import isNumber from 'lodash/isNumber';
 
 const styles = StyleSheet.create({
   image: {width: 50, height: 50},
@@ -83,17 +82,17 @@ const FlashSaleList = ({products, setProducts, productState}) => {
         let newItem = null;
         viewableItemsState.forEach(viewableItem => {
           if (product.id === viewableItem.item.id) {
-            let delta = product.due_date - Date.now();
-            if (delta > 0) {
+            // let delta = product.due_date - Date.now();
+            if (isNumber(product.due_date)) {
               const timestamp = convertSecToTimeDisplayed(
                 getTimeDiff(product.due_date),
               );
               newItem = Object.assign({}, {...product, due_date: timestamp});
+              // console.log('if : ', newItem)
             } else {
-              newItem = Object.assign(
-                {},
-                {...product, due_date: 'item expired!'},
-              );
+              newItem = product;
+              // newItem = Object.assign({}, {...product});
+              // console.log('else : ', newItem)
             }
             return newItem;
           }
@@ -144,14 +143,12 @@ const FlashSaleList = ({products, setProducts, productState}) => {
 
       let newTimeoutIds = [];
       items.forEach(item => {
-        const delta = item.item.due_date - Date.now();
-        if (delta > 0) {
+        // const delta = item.item.due_date - Date.now();
+        if (isNumber(item.item.due_date)) {
           const id = setTimeout(() => {
             console.log('countdown done');
-          }, delta);
+          }, item.item.due_date);
           newTimeoutIds.push(id);
-        } else {
-          console.log('items loop expired');
         }
       });
       timeoutRef.current = newTimeoutIds;
@@ -167,7 +164,11 @@ const FlashSaleList = ({products, setProducts, productState}) => {
       <Text>{item.name.substring(0, 10)}</Text>
       <Text>{item.price} VND</Text>
       <Text>{item.discount}%</Text>
-      <Text>{item.due_date}</Text>
+      <Text>
+        {isNumber(item.due_date)
+          ? convertSecToTimeDisplayed(getTimeDiff(item.due_date))
+          : item.due_date}
+      </Text>
     </View>
   );
 
