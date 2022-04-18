@@ -3,5 +3,5 @@
 A horizontal list of item with individual countdown.
 
 ## Demo
-![App demo gif](https://imgur.com/a/HP4QuFE)
+![App demo gif](https://i.imgur.com/kVwij2F.gif)
 
