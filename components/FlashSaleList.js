@@ -67,7 +67,7 @@ const initialIds = {intervalIds: [], timeoutIds: []};
 const FlashSaleList = ({products, setProducts, productState}) => {
   const [timeoutIds, setTimeoutIds] = useState([]);
   const [intervalIds, setIntervalIds] = useState([]);
-  const [intervalDelay, setIntervalDelay] = useState(1000);
+  const [intervalDelay, setIntervalDelay] = useState(500);
   const [viewableItemsState, setViewableItemsState] = useState([]);
   const intervalRef = useRef([]);
   const timeoutRef = useRef([]);
